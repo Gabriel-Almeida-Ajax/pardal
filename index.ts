@@ -4,15 +4,17 @@ type BuilderVeiculo = {
   portas(portas: number): BuilderVeiculo;
   ano(ano: number): BuilderVeiculo;
   build(): Veiculo;
-}
+};
+
+const logger = (msg: string) => console.log(`[LOG] ${msg}`);
 
 const METRO = 1;
-const KM = 1000 * METRO;              // 1000 m
-const HORA = 3600;                    // s
-const MS = 1000;                      // ms -> s
+const KM = 1000 * METRO; // 1000 m
+const HORA = 3600; // s
+const MS = 1000; // ms -> s
 
 const KMH_TO_MS = (kmh: number) => (kmh * KM) / HORA; // km/h -> m/s
-const MS_TO_KMH = (ms: number) => (ms * HORA) / KM;   // m/s -> km/h
+const MS_TO_KMH = (ms: number) => (ms * HORA) / KM; // m/s -> km/h
 
 class Veiculo {
   protected modelo?: string;
@@ -51,18 +53,19 @@ class Veiculo {
 }
 
 class Carro extends Veiculo {}
+class Moto extends Veiculo {}
 
 class Servidor {
   notificarExcessoVelocidade(veiculo: Veiculo, velocidade: number) {
-    console.log(
+    logger(
       `Veículo ${veiculo.getModelo()} excedeu a velocidade: ${velocidade}`
     );
   }
 }
 
 class Radar {
-  protected limiteMs: number;         // limite em m/s
-  protected deltaMs = KMH_TO_MS(7);   // 7 km/h de tolerância, em m/s
+  protected limiteMs: number; // limite em m/s
+  protected deltaMs = KMH_TO_MS(7); // 7 km/h de tolerância, em m/s
   protected distanciaSensores = 2 * METRO;
   protected servidor: Servidor;
 
@@ -80,26 +83,32 @@ class Radar {
   }
 
   iniciaSensor(veiculo: Veiculo) {
-    const startTime = new Date()
-    console.log(`Sensor iniciado para o veículo ${veiculo.getModelo()} às ${startTime.toISOString()}`);
+    const startTime = new Date();
+    logger(
+      `Sensor iniciado para o veículo ${veiculo.getModelo()} às ${startTime.toISOString()}`
+    );
     return () => this.calculoFinal(startTime.getTime(), veiculo);
   }
 
   calculoFinal(tempoInicialMs: number, veiculo: Veiculo) {
     const tempoDecorridoMs = Date.now() - tempoInicialMs;
-    if (tempoDecorridoMs <= 0) return;     // evita div/0 e leituras ruins
-    console.log(`Sensor finalizado para o veículo ${veiculo.getModelo()} com tempo decorrido de ${tempoDecorridoMs} ms`);
+    if (tempoDecorridoMs <= 0) return; // evita div/0 e leituras ruins
+    logger(
+      `Sensor finalizado para o veículo ${veiculo.getModelo()} com tempo decorrido de ${tempoDecorridoMs} ms`
+    );
 
     const tempoS = tempoDecorridoMs / MS;
     const velocidadeMs = this.distanciaSensores / tempoS; // m/s
 
-    console.log(`Velocidade medida: ${MS_TO_KMH(velocidadeMs)} km/h`);
+    logger(`Velocidade medida: ${MS_TO_KMH(velocidadeMs)} km/h`);
 
     if (velocidadeMs > this.limiteComDelta()) {
-      this.servidor.notificarExcessoVelocidade(veiculo, MS_TO_KMH(velocidadeMs)); // reporte em km/h
+      this.servidor.notificarExcessoVelocidade(
+        veiculo,
+        MS_TO_KMH(velocidadeMs)
+      ); // reporte em km/h
     }
   }
-
 }
 
 const carro = Carro.builder()
@@ -111,9 +120,19 @@ const carro = Carro.builder()
 
 const pardal = new Radar(70, new Servidor());
 
-console.log(`Limite do radar: ${pardal.mostraLimiteKmh()} km/h`);
+logger(`Limite do radar: ${pardal.mostraLimiteKmh()} km/h`);
+logger("----");
 
-const sensor = pardal.iniciaSensor(carro);
+const sensorCarro = pardal.iniciaSensor(carro);
 setTimeout(() => {
-  sensor();
+  sensorCarro();
+
+  logger("----");
+
+  const moto = Moto.builder().modelo("Ninja").cor("Verde").ano(2021).build();
+
+  const sensorMoto = pardal.iniciaSensor(moto);
+  setTimeout(() => {
+    sensorMoto();
+  }, 70);
 }, 60);
